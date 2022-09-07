@@ -1,4 +1,10 @@
 #include "systemcalls.h"
+#include "stdlib.h"
+#include "unistd.h"
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -16,6 +22,14 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+    //holds the return code
+    int rc;
+
+    rc = system(cmd);
+
+    if(rc == -1){
+        return false;
+    }
 
     return true;
 }
@@ -58,9 +72,49 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    //get parent pid
+    //pid_t parent = getpid();
+
+///*
+
+    //fork
+    pid_t pid = fork();
+    
+
+    if(pid == -1){
+        //failed to make child
+        //printf("\n\n\npid fork error\n\n\n");
+        return false;
+    }
+    else if (pid > 0){
+        //this is the parent so wait
+        int parent_rc;
+        wait(&parent_rc);
+        if(parent_rc != 0){
+            printf("\nCommand returned non-zero exit code");
+            return false;
+        }
+    }
+    else{
+        //this is the child
+        //do the execv
+        int child_rc = 0;
+        
+        //child_rc = execv(command[0], &command[1]);
+        child_rc = execv(command[0], command);
+        //printf("\nexecv return value: %d\n", child_rc);
+        if(child_rc != 0){
+            //execv shouldn't return so if we get here error
+            printf("\n*** ERROR: exec failed with return value %d\n", child_rc);
+            
+            return false;
+        }
+    }
+
+//*/
 
     va_end(args);
-
+    //printf("\nreturning true\n");
     return true;
 }
 
@@ -92,6 +146,59 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+
+
+   
+    //redirect the output
+    //printf("\n\n\n opening file\n\n\n");
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if(fd < 0){
+        printf("\n\n\n error opening file\n\n\n");
+        return false;
+    }
+
+    //fork
+    pid_t pid = fork();
+
+    if(pid == -1){
+        //failed to make child
+        return false;
+    }
+    else if (pid > 0){
+        //close fd
+        close(fd);
+        //this is the parent so wait
+        int parent_rc;
+        wait(&parent_rc);
+        if(parent_rc != 0){
+            printf("\nCommand returned non-zero exit code");
+            return false;
+        }
+    }
+    else{
+        //this is the child
+
+        //redirect
+        if(dup2(fd,1) < 0){
+            printf("\n\n\ndup2 error\n\n\n");
+            return false;
+        }
+
+        close(fd);
+
+        //do the execv
+        int child_rc = 0;
+        
+        //child_rc = execv(command[0], &command[1]);
+        child_rc = execv(command[0], command);
+        //printf("\nexecv return value: %d\n", child_rc);
+        if(child_rc != 0){
+            //execv shouldn't return so if we get here error
+            printf("\n*** ERROR: exec failed with return value %d\n", child_rc);
+            
+            return false;
+        }
+    }
 
     va_end(args);
 
