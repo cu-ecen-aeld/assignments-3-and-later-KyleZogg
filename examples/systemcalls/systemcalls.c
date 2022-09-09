@@ -94,21 +94,26 @@ bool do_exec(int count, ...)
             printf("\nCommand returned non-zero exit code");
             return false;
         }
+        else{
+            return true;
+        }
     }
     else{
         //this is the child
         //do the execv
-        int child_rc = 0;
+        int child_rc;
         
         //child_rc = execv(command[0], &command[1]);
         child_rc = execv(command[0], command);
         //printf("\nexecv return value: %d\n", child_rc);
-        if(child_rc != 0){
+        //if(child_rc != 0){
             //execv shouldn't return so if we get here error
             printf("\n*** ERROR: exec failed with return value %d\n", child_rc);
             
-            return false;
-        }
+            //return false;
+            //TA suggested use exit(-1)
+            exit(-1);
+        //}
     }
 
 //*/
