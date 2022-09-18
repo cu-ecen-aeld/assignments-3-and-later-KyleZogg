@@ -62,6 +62,7 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
 fi
 
 echo "Adding the Image in outdir"
+cp $OUTDIR/linux-stable/arch/arm64/boot/Image $OUTDIR
 
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
@@ -85,7 +86,7 @@ mkdir rootfs
 cd rootfs
 
 #create the rest of the directories
-mkdir bin dev etc home home/conf lib proc sbin sys tmp
+mkdir bin dev etc home home/conf lib lib64 proc sbin sys tmp
 mkdir usr
 cd usr
 mkdir bin lib sbin
@@ -99,7 +100,9 @@ cd ..
 #make all the contents owned by root
 cd "$OUTDIR"
 cd rootfs
-sudo chown -R root:root *
+#
+#dont do this until the very end so that you don't need the "sudo" to make busybox
+#sudo chown -R root:root *
 #end Kyle Edits
 
 cd "$OUTDIR"
@@ -111,8 +114,8 @@ git clone git://busybox.net/busybox.git
     # TODO:  Configure busybox
     #this should be DONE
     #these lines from lecture vid "linux root filesystem 9:57"
-    make distclean
-    make defconfig
+    make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- distclean
+    make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- defconfig
 else
     cd busybox
 fi
@@ -123,7 +126,8 @@ echo "make and install busybox"
 #sudo make ARCH=arm64 CROSS_COMPILE=arm-unknown-linux-gnueabi- install 
 #sudo make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- install
 #sudo screws with the path so you need to add the full path to the compiler here (THIS WORKED)
-sudo make ARCH=arm64 CROSS_COMPILE=/home/kyle/Documents/linux_1/install-lnx/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu- install
+#sudo make ARCH=arm64 CROSS_COMPILE=/home/kyle/Documents/linux_1/install-lnx/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu- install
+make -j4 CONFIG_PREFIX=${OUTDIR}/rootfs ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- install
 
 #cp the binary to $OUTDIR/rootfs/bin
 sudo cp busybox $OUTDIR/rootfs/bin
@@ -141,10 +145,10 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 #this should be DONE
 #this is at 11:10 in linux root filesystem
 echo "this is the print-sysroot line"
-${CROSS_COMPILE}gcc -print-sysroot
+export SYSROOT=$(${CROSS_COMPILE}gcc -print-sysroot)
 
 echo "this is the cd SYSROOT line"
-SYSROOT=/home/kyle/Documents/linux_1/install-lnx/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/../aarch64-none-linux-gnu/libc
+#SYSROOT=/home/kyle/Documents/linux_1/install-lnx/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/../aarch64-none-linux-gnu/libc
 echo $SYSROOT
 cd $SYSROOT
 ls -l lib/ld-linux-aarch64.so.1
@@ -154,13 +158,13 @@ cd $OUTDIR/rootfs
 #get these lines from the two grep commands above
 sudo cp -a $SYSROOT/lib/ld-linux-aarch64.so.1 lib
 
-sudo cp -a $SYSROOT/lib64/ld-2.31.so lib
-sudo cp -a $SYSROOT/lib64/libc.so.6 lib
-sudo cp -a $SYSROOT/lib64/libc-2.31.so lib
-sudo cp -a $SYSROOT/lib64/libm.so.6 lib
-sudo cp -a $SYSROOT/lib64/libm-2.31.so lib
-sudo cp -a $SYSROOT/lib64/libresolv.so.2 lib
-sudo cp -a $SYSROOT/lib64/libresolv-2.31.so lib
+sudo cp -a $SYSROOT/lib64/ld-2.31.so lib64
+sudo cp -a $SYSROOT/lib64/libc.so.6 lib64
+sudo cp -a $SYSROOT/lib64/libc-2.31.so lib64
+sudo cp -a $SYSROOT/lib64/libm.so.6 lib64
+sudo cp -a $SYSROOT/lib64/libm-2.31.so lib64
+sudo cp -a $SYSROOT/lib64/libresolv.so.2 lib64
+sudo cp -a $SYSROOT/lib64/libresolv-2.31.so lib64
 
 # TODO: Make device nodes
 #stay in $OUTDIR/rootfs
@@ -187,6 +191,7 @@ sudo cp finder.sh $OUTDIR/rootfs/home
 sudo cp conf/username.txt $OUTDIR/rootfs/home/conf
 sudo cp finder-test.sh $OUTDIR/rootfs/home
 sudo cp autorun-qemu.sh $OUTDIR/rootfs/home
+sudo cp makefile $OUTDIR/rootfs/home
 
 # TODO: Chown the root directory
 cd $OUTDIR/rootfs
@@ -196,7 +201,9 @@ sudo chown -R root:root *
 cd $OUTDIR/rootfs
 find . | cpio -H newc -ov --owner root:root > ../initramfs.cpio
 cd ..
-gzip initramfs.cpio
+gzip -f initramfs.cpio
+
+#this isn't needed
 #mkimage -A arm64 -O linux -T ramdisk -d initramfs.cpio.gz Image
 
 #Booting the kernel
