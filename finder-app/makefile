@@ -1,3 +1,5 @@
+all: writer
+
 writer: writer.c
 	gcc -o writer writer.c
 
