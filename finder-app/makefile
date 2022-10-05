@@ -1,4 +1,4 @@
-all: writer
+all: CROSS_COMPILE
 
 writer: writer.c
 	gcc -o writer writer.c
