@@ -50,7 +50,7 @@ int main (int argc, char *argv[]) {
 
 //bind the signal handler
     signal(SIGINT, sig_handler); //register the signal handler
-
+    signal(SIGTERM, sig_handler);
 
 
 //while loop to test the signal handler: not needed in final program
