@@ -41,7 +41,7 @@ int main (int argc, char *argv[]) {
 
 //open syslog
      openlog("", 0, LOG_USER);
-     //syslog(LOG_USER, "this is a syslog teest");
+     syslog(LOG_USER, "this is a syslog teest");
 
 
 //open output file
@@ -100,31 +100,59 @@ int main (int argc, char *argv[]) {
 
 
 //Deal with the Daemon
-    if (argc > 1 && strcmp(argv[1], "-d") == 0) {
-        int rc = 0;
-        rc = fork();
-        if (rc < 0) {
-            syslog(LOG_USER, "fork failed");
-            free(buffer);
-            closelog();
-            return -1;
-        } else if (rc > 0) {
-            //wait 50ms
-            usleep(50000);
-            return 0;
-        } else {
-            syslog(LOG_USER, "something weird in fork not sure why we would get here");
-            setsid();
-            rc = fork();
-            if (rc < 0) {
-                free(buffer);
-                closelog();
-                return -1;
-            } else if (rc > 0) {
-                return 0;
-            }
+    // if (argc > 1 && strcmp(argv[1], "-d") == 0) {
+    //     int rc = 0;
+    //     rc = fork();
+    //     if (rc < 0) {
+    //         syslog(LOG_USER, "fork failed");
+    //         free(buffer);
+    //         closelog();
+    //         return -1;
+    //     } else if (rc > 0) {
+    //         //wait 50ms
+    //         usleep(50000);
+    //         return 0;
+    //     } else {
+    //         syslog(LOG_USER, "something weird in fork not sure why we would get here");
+    //         setsid();
+    //         rc = fork();
+    //         if (rc < 0) {
+    //             free(buffer);
+    //             closelog();
+    //             return -1;
+    //         } else if (rc > 0) {
+    //             return 0;
+    //         }
+    //     }
+    // }
+
+    // make it a daemon
+
+    pid_t pid;
+
+    if (argc == 2 && strcmp(argv[1], "-d") == 0) {
+
+        printf("\n\nDaemon mode\n\n");
+
+        pid = fork();
+
+        if (pid < 0) {
+            // fork error so parent should exit with failure
+            perror("fork");
+            exit(EXIT_FAILURE);
+        }
+        if (pid > 0) {
+            // This is the parent so kill the parent
+            syslog(LOG_USER, "Killing the parent");
+            exit(EXIT_SUCCESS);
+            syslog(LOG_USER, "PARENT REFUSED TO DIE");
+        }
+        if(pid == 0){
+        // pid == 0, this is the child process which should continue to run
+            syslog(LOG_USER, "this is the child");
         }
     }
+
 
 
 //listen
@@ -169,7 +197,9 @@ int main (int argc, char *argv[]) {
         ssize_t size = 0;
         int loop_num = 0;
 
-        while(1){
+        int should_continue = 1; 
+
+        while(should_continue){   //this is the recieve loop
 
             loop_num++;
 
@@ -212,15 +242,16 @@ int main (int argc, char *argv[]) {
             for(i = 0; i < size; i++) {
                 if (buffer[i] == '\n') {
                     syslog(LOG_USER,"Broke out cuz newline found. Looped %d times", loop_num);
+                    should_continue = 0;
                     break;
                 }
             }
 
 
-            //if(size < 16000){
-            //    syslog(LOG_USER,"Broke out with size was less that 1000 we looped %d times", loop_num);
-            //    break;
-            //}
+            // if(size < 16000){
+            //     syslog(LOG_USER,"Broke out with size was less that 1000 we looped %d times", loop_num);
+            //     break;
+            // }
         }
             loop_num = 0;
 
