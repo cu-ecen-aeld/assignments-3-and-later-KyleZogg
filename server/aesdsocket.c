@@ -217,10 +217,10 @@ int main (int argc, char *argv[]) {
             }
 
 
-            if(size < 16000){
-                syslog(LOG_USER,"Broke out with size was less that 1000 we looped %d times", loop_num);
-                break;
-            }
+            //if(size < 16000){
+            //    syslog(LOG_USER,"Broke out with size was less that 1000 we looped %d times", loop_num);
+            //    break;
+            //}
         }
             loop_num = 0;
 
