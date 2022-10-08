@@ -167,8 +167,12 @@ int main (int argc, char *argv[]) {
 
         long fsize = 0;
         ssize_t size = 0;
-        
+        int loop_num = 0;
+
         while(1){
+
+            loop_num++;
+
             //write the whole contents of buffer to null characters
             memset(buffer,'\0',SIZE);   
 
@@ -179,7 +183,7 @@ int main (int argc, char *argv[]) {
             }
             if(size == 0) {
                 //we finished reading the stream
-                syslog(LOG_USER,"DONE recieving data");
+                syslog(LOG_USER,"DONE recieving data we looped %d times", loop_num);
                 break;
             }
             if(size > 0){
@@ -198,7 +202,27 @@ int main (int argc, char *argv[]) {
             //find the new end of the file
             fseek(io_file, 0, SEEK_END);
 
+            //don't need to loop again if size is small
+            //I DON'T KNOW WHY THIS IS NEEDED BUT IT WORKS IF WE LOOP AGAIN IT DOESN'T WORK
+            //THIS REALLY DOENS'T MAKE SENSE TO ME BUT IT NEEDS TO NOT LOOP AGAIN AND CHECK FOR A == 0 CASE
+            //COULD TRY LOOPING THROUGH BUFFER TO SEE IF IT CONTAINS A NEW LINE INSTEAD OF LOOKING AT SIZE
+
+            //IT WORKED TO CHECK FOR A NEWLINE NOT SURE WHY THIS IS THE CASE BUT I DON'T CARE
+            int i;
+            for(i = 0; i < size; i++) {
+                if (buffer[i] == '\n') {
+                    syslog(LOG_USER,"Broke out cuz newline found. Looped %d times", loop_num);
+                    break;
+                }
+            }
+
+
+            if(size < 16000){
+                syslog(LOG_USER,"Broke out with size was less that 1000 we looped %d times", loop_num);
+                break;
+            }
         }
+            loop_num = 0;
 
             //find the new end of the file
             fseek(io_file, 0, SEEK_END);
